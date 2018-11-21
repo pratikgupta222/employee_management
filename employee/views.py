@@ -1,9 +1,7 @@
 import json
 import logging
-import datetime
 
 from django import db
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from rest_framework import views, status
 from rest_framework.response import Response
@@ -13,21 +11,21 @@ from rest_framework.permissions import AllowAny
 from employee.models import Employee
 from employee.serializers import EmployeeSerializer
 from employee.utils import validate_employee_data, get_updation_data
-# from employee.constants import UPDATION_KEY_NAMES
-
-
-# Create your views here.
 
 
 class EmployeeList(views.APIView):
     """
-        List all the filtered employee records or create a new record
+    List all Employee, or create a new Employee.
     """
-    permission_classes = (AllowAny, )
+
+    permission_classes = (AllowAny,)
 
     def get(self, request):
         """
-            For fetching all the employees for the given city
+        For fetching the existing employee records
+
+        :param request: The request param for fetching all the employee records
+        :return: All the employee records
         """
         data = {}
 
@@ -46,7 +44,40 @@ class EmployeeList(views.APIView):
 
     def post(self, request):
         """
-            For creating a new employee
+        For creating a new employee.
+
+        :param request: The request parameters for creating a new Employee.
+                        The request body should be as below format:
+
+                         {
+                            "fname": First name of the employee,
+                            "lname": Last name of the employee,
+                            "phone": Phone number of the employee,
+                            "email": Email of the employee,
+                            "role": The role of the employee in the company, it
+                                    can either be regular or admin,
+                            "emp_number": The current enrollment count of the
+                                          employee in the company,
+                            "company_id": The id of the company to which the
+                                          employee belong
+                         }
+        :return: Raise error if invalid request else return response as:
+
+                 {
+                    "employee": {
+                        "id": The id of the newly created employee,
+                        "uid": Unique id of the employee generated using the
+                               company's employee prefix and the employee number,
+                        "fname": First name of the employee,
+                        "lname": Last name of the employee,
+                        "phone": Phone number of the employee,
+                        "email": Email of the employee,
+                        "role": The role of the employee in the company,
+                        "emp_number": The current enrollment count of the
+                                          employee in the company,
+                        "company": The id of the company of the employee
+                    }
+                 }
         """
 
         try:
@@ -68,8 +99,6 @@ class EmployeeList(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST,
                             content_type='text/html; charset=utf-8')
 
-        print("This is the validated data ========= ", validated_data)
-
         with db.transaction.atomic():
             serializer = EmployeeSerializer(data=validated_data.get('data'))
 
@@ -87,13 +116,35 @@ class EmployeeList(views.APIView):
 
 class EmployeeDetails(views.APIView):
     """
-        Retrieve or update the employee instance
+    Retrieve, update or delete a Employee instance.
     """
-    permission_classes = (AllowAny, )
+
+    permission_classes = (AllowAny,)
 
     def get(self, request, pk, format=None):
         """
-            Returns the employee data corresponding to the employee id
+
+        :param request:
+        :param pk: Primary Key (integer) of the employee
+        :param format:
+        :return: If the pk is valid then return the employee details as:
+                 {
+                    "result": [
+                        {
+                            "id": The id of the newly created employee,
+                            "uid": Unique id of the employee generated using the
+                               company's employee prefix and the employee number,
+                            "fname": First name of the employee,
+                            "lname": Last name of the employee,
+                            "phone": Phone number of the employee,
+                            "email": Email of the employee,
+                            "role": The role of the employee in the company,
+                            "emp_number": The current enrollment count of the
+                                          employee in the company,
+                            "company": The id of the company of the employee
+                        }
+                    ]
+                 }
         """
         data = {}
 
@@ -112,7 +163,35 @@ class EmployeeDetails(views.APIView):
 
     def put(self, request, pk, format=None):
         """
-            For updating the record of the employee corresponding to the id
+
+        :param request: The request parameters for updating the existing
+                        Employee. The request body should be as below format:
+
+                        {
+                            "fname": First name of the employee,
+                            "lname": Last name of the employee,
+                            "phone": Phone number of the employee,
+                            "email": Email of the employee,
+                            "role": The role of the employee in the company, it
+                                    can either be regular or admin,
+                            "emp_number": The current enrollment count of the
+                                          employee in the company,
+                            "company_id": The id of the company to which the
+                                          employee belong
+                        }
+
+                        ** All the fields are optional. Request params should
+                        have only those fields which are to be updated
+        :param pk: The id of th employee which has to be updated
+        :param format:
+        :return: If the company with corresponding id exists and the request
+                 parameters are correct then return the updated company record
+                 as:
+
+                 {
+                    "employee": ID of the employee updated
+                 }
+
         """
         employee_queryset = Employee.objects.filter(id=pk)
 
@@ -160,13 +239,20 @@ class EmployeeDetails(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
-    	try:
-    		employee = Employee.objects.get(id=pk)
-    	except Employee.DoesNotExist:
-    		logging.info("Invalid employee ID")
-    		return Response(data="Employee does not exist",
+        """
+
+        :param request:
+        :param pk: Id of the company which has to be deleted
+        :param format:
+        :return: Error if company doesn't exists else return nothing
+        """
+        try:
+            employee = Employee.objects.get(id=pk)
+        except Employee.DoesNotExist:
+            logging.info("Invalid employee ID")
+            return Response(data="Employee does not exist",
                             status=status.HTTP_400_BAD_REQUEST,
                             content_type='text/html; charset=utf-8')
 
-    	employee.delete()
-    	return Response(status=status.HTTP_204_NO_CONTENT)
+        employee.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

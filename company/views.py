@@ -1,11 +1,5 @@
-from django.shortcuts import render
-
 import json
 import logging
-import datetime
-
-from django import db
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from rest_framework import views, status
 from rest_framework.response import Response
@@ -22,13 +16,16 @@ from company.constants import UPDATION_KEY_NAMES
 
 class CompanyList(views.APIView):
     """
-        List all the filtered driver records or create a new record
+    List all Company, or create a new Company.
     """
-    permission_classes = (AllowAny, )
+    permission_classes = (AllowAny,)
 
     def get(self, request):
         """
-            For fetching all the drivers for the given city
+        For fetching the existing company records
+
+        :param request: The request param for fetching all the company records
+        :return: All the company records
         """
         data = {}
 
@@ -47,7 +44,21 @@ class CompanyList(views.APIView):
 
     def post(self, request):
         """
-            For creating a new driver
+        For creating the new company record.
+
+        :param request: The request parameters for creating a new Company.
+                        The request body should be as below format:
+
+                         {
+                            "name": Name of the Company,
+                            "emp_prefix": Prefix for the Employee ID
+                         }
+
+        :return: Raise error if invalid request else return response as:
+
+                 {
+                    "company": ID of the company created
+                 }
         """
 
         try:
@@ -68,7 +79,8 @@ class CompanyList(views.APIView):
             if response_dict.get('message'):
                 response_dict["message"] += ' and the prefix to be used'
             else:
-                response_dict["message"] = "Please provide the prefix to be used"
+                response_dict[
+                    "message"] = "Please provide the prefix to be used"
 
         if response_dict.get('message'):
             return Response(data=response_dict,
@@ -91,18 +103,30 @@ class CompanyList(views.APIView):
 
 class CompanyDetails(views.APIView):
     """
-        Retrieve or update the driver instance
+        Retrieve, update or delete a Company instance.
     """
-    permission_classes = (AllowAny, )
+    permission_classes = (AllowAny,)
 
     def get(self, request, pk, format=None):
         """
-            Returns the driver record data corresponding to the driver id
+
+        :param request:
+        :param pk: Primary Key (integer) of the company
+        :param format:
+        :return: If the pk is valid then return the company details as:
+                 {
+                    "result": [
+                        {
+                            "id": ID of the company,
+                            "name": Name of the company,
+                            "emp_prefix": Prefix for the Employee ID
+                        }
+                    ]
+                 }
         """
         data = {}
 
         company_queryset = Company.objects.filter(id=pk)
-        print('This is the queryset == ', company_queryset)
 
         if not company_queryset:
             logging.info("Invalid company ID")
@@ -116,8 +140,20 @@ class CompanyDetails(views.APIView):
                         data=data)
 
     def put(self, request, pk, format=None):
+
         """
-            For updating the record of the driver corresponding to the id
+
+        :param request: The request parameters for updating the existing Company.
+                        The request body should be as below format:
+
+                         {
+                            "name": Name of the Company,
+                            "emp_prefix": Prefix for the Employee ID
+                         }
+        :param pk: The id of th company which has to be updated
+        :param format:
+        :return: If the company with corresponding id exists and the request
+                 parameters are correct then return the updated company record
         """
         company_queryset = Company.objects.filter(id=pk)
 
@@ -160,3 +196,22 @@ class CompanyDetails(views.APIView):
                          serializer.errors)
             return Response(data=serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        """
+
+        :param request:
+        :param pk: Id of the company which has to be deleted
+        :param format:
+        :return: Error if company doesn't exists else return nothing
+        """
+        try:
+            company = Company.objects.get(id=pk)
+        except Company.DoesNotExist:
+            logging.info("Invalid company ID")
+            return Response(data="Company does not exist",
+                            status=status.HTTP_400_BAD_REQUEST,
+                            content_type='text/html; charset=utf-8')
+
+        company.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
