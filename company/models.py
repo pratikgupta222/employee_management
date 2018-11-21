@@ -7,7 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 class Company(models.Model):
     name = models.CharField(_('Company Name'), max_length=200)
 
-    emp_prefix = models.CharField(_('Employee Prefix'), max_length=4)
+    emp_prefix = models.CharField(_('Employee Prefix'), max_length=8, unique=True)
 
     class Meta:
         verbose_name = _("Company")
